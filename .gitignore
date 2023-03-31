@@ -1,0 +1,11 @@
+./idea
+.DS_Store
+
+__pycache/
+*.py[cod]
+*$py.class
+
+local_settings.py
+
+*/migrations/*.py
+!*/migrations/__init__.py
