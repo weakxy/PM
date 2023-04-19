@@ -1,4 +1,5 @@
-{% extends 'layout.html' %}
+{% extends 'layout/basic.html' %}
+{% block title %}首页{% endblock %}
 {% block css %}
 
     <style>
@@ -13,7 +14,9 @@
 
 {% block login %}
     <li>
-        <a><button id="sign_in" class="lg">登录</button></a>
+        <a>
+            <button id="sign_in" class="lg">登录</button>
+        </a>
     </li>
     <li>
         {#        <button href="pm/add/" id="sign_up" class="lg">注册</button>#}
@@ -35,7 +38,7 @@
                     <form method="post" novalidate id="formAdd">
                         {% csrf_token %}
                         <div class="form-group">
-                            <label>手机号</label>
+                            <label>邮箱或手机号</label>
                             {{ form.mobile }}
                             <span style="color: #b92c28">{{ form.mobile.errors.0 }}</span>
                         </div>
@@ -58,7 +61,7 @@
                                     <span style="color: #b92c28">{{ form.code.errors.0 }}</span>
                                 </div>
                                 <div class="col-xs-5">
-                                    <img id="image_code" src="/image/code/" style="width: 125px">
+                                    <img id="image_code" src="/image/code/" style="width: 125px" title="点击更换">
                                 </div>
                             </div>
                         </div>
@@ -80,9 +83,11 @@
         $(function () {
             bindBtnClinkinEvent();
             bindBtnSigninEvent();
+            bindImgClinkinEvent();
         })
 
         function bindBtnClinkinEvent() {
+            {# 显示登录对话框 #}
             $("#sign_in").click(function () {
                 $("#formAdd")[0].reset();
                 $("#myModal").modal("show");
@@ -108,6 +113,14 @@
             {#            }#}
             {#        }#}
             {#    })#}
+        }
+
+        function bindImgClinkinEvent() {
+            {# 刷新图片验证码 #}
+            $('#image_code').click(function () {
+                var old_src = $(this).attr('src')
+                $(this).attr('src', old_src + "?");
+            })
         }
     </script>
 

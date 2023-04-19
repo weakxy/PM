@@ -14,10 +14,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.utils'))
 """
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import path, re_path, include
 from django.views.static import serve
 from django.conf import settings
-from app01.views import home
+from app01.views import home, project, manage
 
 urlpatterns = [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
@@ -31,4 +31,19 @@ urlpatterns = [
     path('logout/', home.home_logout),
 
     path('orm/', home.orm),
+
+    # 项目列表
+    path('pm/project/list/', project.project_list, name='project_list'),
+    path('pm/project/star/<str:project_type>/<int:project_id>/', project.project_star),
+    path('pm/project/unstar/<str:project_type>/<int:project_id>/', project.project_unstar),
+
+    # 项目管理
+    path('manage/<int:project_id>/', include([
+        path('dashboard/', manage.dashboard, name='dashboard'),
+        path('issues/', manage.issues, name='issues'),
+        path('statistics/', manage.statistics, name='statistics'),
+        path('file/', manage.file, name='file'),
+        path('wiki/', manage.wiki, name='wiki'),
+        path('setting/', manage.setting, name='setting'),
+    ])),
 ]
