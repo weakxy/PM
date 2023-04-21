@@ -23,3 +23,17 @@ def create_bucket(bucket, region="ap-nanjing"):
         Bucket=bucket,
         ACL="public-read",
     )
+
+
+def upload_file(bucket, region, file_object, key):
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+    config = CosConfig(Region=region, SecretId=settings.TENCENT_COS_ID, SecretKey=settings.TENCENT_COS_KEY, )
+    client = CosS3Client(config)
+    client.upload_file_from_buffer(
+        Bucket=bucket,
+        Body=file_object,
+        Key=key,
+    )
+
+    return "https://{}.cos.{}.myqcloud.com/{}".format(bucket, region, key)

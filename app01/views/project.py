@@ -28,7 +28,9 @@ def project_list(request):
     form = ProjectModelForm(request, data=request.POST)
     if form.is_valid():
         # 创建COS桶
-        bucket = "{}-{}-1317188553".format(request.tracer.user.mobile, str(time.time() * 1000))
+        bucket = "{}{}-1317188553".format(request.tracer.user.mobile,
+                                          str(time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
+        print(bucket)
         region = "ap-nanjing"
         create_bucket(bucket, region)
 

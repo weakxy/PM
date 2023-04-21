@@ -92,6 +92,7 @@
     <script src="{% static 'plugins/editor-md/editormd.min.js' %}"></script>
     <script>
         var WIKI_DETAIL_URL = "{% url 'wiki' project_id=request.tracer.project.id %}"
+        var WIKI_UPLOAD_URL = "{% url 'wiki_upload' project_id=request.tracer.project.id %}"
 
         $(function () {
             initCatalog();
@@ -103,6 +104,9 @@
                 placeholder: "请输入内容",
                 height: 500,
                 path: "{% static 'plugins/editor-md/lib/' %}",
+                imageUpload: true,
+                imageFormats: ['jpg','jpeg','png','gif'],
+                imageUploadURL: WIKI_UPLOAD_URL,
             })
         }
 
