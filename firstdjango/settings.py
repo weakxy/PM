@@ -105,8 +105,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
-# LANGUAGE_CODE = 'en-us'
-LANGUAGE_CODE = 'zh-hans'
+LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
 
@@ -131,6 +130,10 @@ MEDIA_URL = "/media/"
 # 短信模板
 # ################# 腾讯云短信 ##################
 SMS = 0
+
+# ################# 腾讯COS桶 ####################
+TENCENT_COS_ID = 'COS的secret_id'
+TENCENT_COS_KEY = 'COS的secret_key'
 
 try:
     from .local_settings import *
