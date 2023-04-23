@@ -1,5 +1,225 @@
 {% extends 'layout/manage.html' %}
 
+{% block css %}
+    <style>
+        .panel-default .panel-heading {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .panel-default > .panel-heading a {
+            text-decoration: none;
+        }
+
+        .panel-default > .panel-heading span {
+            padding: 0 5px;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
-    <h1>概览</h1>
+    {#  导航条  #}
+    <div class="container-fluid">
+        <div class="panel panel-default">
+            <!-- Default panel contents -->
+            <div class="panel-heading">
+                <div>
+                    <a href="{% url 'file' project_id=request.tracer.project.id %}">
+                        <i class="fa fa-home" aria-hidden="true"></i>
+                    </a>
+                    {% for record in breadcrumb_list %}
+                        <a href="{% url 'file' project_id=request.tracer.project.id %}?folder={{ record.id }}">
+                            <i class="fa fa-caret-right" aria-hidden="true"></i>
+                            <span>{{ record.name }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+                <div>
+                    <a class="btn btn-success btn-xs" data-toggle="modal" data-target="#addModal"
+                       data-whatever="新建文件夹">
+                        <i class="fa fa-plus-circle" aria-hidden="true"></i> 新建文件夹
+                    </a>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>名称</th>
+                    <th>大小</th>
+                    <th>更新者</th>
+                    <th>更新时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in file_object_list %}
+                    <tr>
+                        <th>
+                            {% if item.file_type == 1 %}
+                                <i class="fa fa-file" aria-hidden="true"></i>
+                            {% else %}
+                                <a href="{% url 'file' project_id=request.tracer.project.id %}?folder={{ item.id }}">
+                                    <i class="fa fa-folder" aria-hidden="true"></i>
+                                    {{ item.name }}
+                                </a>
+                            {% endif %}
+                        </th>
+                        <td>
+                            {% if item.file_type == 1 %}
+                                {{ item.file_size }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ item.update_user.name }}</td>
+                        <td>{{ item.update_datetime }}</td>
+                        <td>
+                            {% if item.file_type == 2 %}
+                                <a class="btn btn-default btn-xs"
+                                   data-toggle="modal"
+                                   data-target="#addModal"
+                                   data-name="{{ item.name }}"
+                                   data-fid="{{ item.id }}"
+                                   data-whatever="编辑文件夹">
+                                    <i class="fa fa-pencil-square-o" aria-hidden="true"></i>编辑
+                                </a>
+                            {% endif %}
+                            <a class="btn btn-danger btn-xs"
+                               data-toggle="modal"
+                               data-fid="{{ item.id }}"
+                               data-target="#alertModal">
+                                <i class="fa fa-trash" aria-hidden="true"></i>删除
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新建 & 编辑Modal -->
+    <div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="form">
+                        {% csrf_token %}
+                        <input type="text" name="fid" id="fid" class="hide">
+                        {% for field in form %}
+                            <div class="form-group">
+                                <label for={{ field.id_for_label }}>{{ field.label }}</label>
+                                {{ field }}
+                                <span class="error-msg" style="color: #b92c28">{{ field.errors.0 }}</span>
+                            </div>
+                        {% endfor %}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取 消</button>
+                    <button id="btnFormSubmit" type="button" class="btn btn-primary">新 建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除Modal -->
+    <div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="alert alert-danger alert-dismissible fade in" role="alert">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4>是否确定要删除?</h4>
+                <p>文件夹中所有内容都会被删除! </p>
+                <p style="text-align: right">
+                    <a class="btn btn-default btn-sm" data-dismiss="modal" aria-label="Close">取 消</a>
+                    <button id="btnDelete" type="button" class="btn btn-danger btn-sm">确 定</button>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        var FOLDER_URL = "{% url 'file' project_id=request.tracer.project.id %}";
+        var FILE_DELETE_URL = "{% url 'file_delete' project_id=request.tracer.project.id %}";
+
+        $(function () {
+            initAddModal();
+            bindModalSubmit();
+            bindDeleteSubmit();
+        });
+
+        function bindDeleteSubmit() {
+            $("#btnDelete").click(function (){
+                $.ajax({
+                    url:FILE_DELETE_URL,
+                    type: "GET",
+                    data: {fid:$(this).attr('fid')},
+                    success:function (res){
+                        if(res.status){
+                            location.href=location.href;
+                        }
+                    }
+                })
+            })
+        }
+
+        function initAddModal() {
+            $('#addModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget); // Button that triggered the modal
+                var recipient = button.data('whatever'); // Extract info from data-* attributes
+                var name = button.data('name'); // Extract info from data-* attributes
+                var fid = button.data('fid'); // Extract info from data-* attributes
+                var modal = $(this);
+                modal.find('.modal-title').text(recipient);
+
+                if (fid) {
+                    // 编辑
+                    modal.find("#id_name").val(name);
+                    modal.find('#fid').val(fid);
+                } else {
+                    // 新建
+                    modal.find('.error-msg').empty();
+                    // document.getElementById('form').reset();
+                    $('#form')[0].reset();
+                }
+            })
+
+            $('#alertModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget); // Button that triggered the modal
+                var fid = button.data('fid'); // Extract info from data-* attributes
+                $('#btnDelete').attr('fid',fid);
+            })
+        }
+
+        function bindModalSubmit() {
+            $('#btnFormSubmit').click(function () {
+                $.ajax({
+                    url: location.href,
+                    type: "POST",
+                    data: $("#form").serialize(),
+                    dataType: "JSON",
+                    success: function (res) {
+                        if (res.status) {
+                            location.href = location.href;
+                        } else {
+                            $.each(res.error, function (key, value) {
+                                $("#id_" + key).next().text(value[0]);
+                            })
+                        }
+                    }
+                })
+            })
+        }
+    </script>
 {% endblock %}
