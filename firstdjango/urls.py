@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, re_path, include
 from django.views.static import serve
 from django.conf import settings
-from app01.views import home, project, manage, wiki, file
+from app01.views import home, project, manage, wiki, file, setting
 
 urlpatterns = [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
@@ -57,6 +57,7 @@ urlpatterns = [
         path('file/download/<int:file_id>/', file.file_download, name='file_download'),
         path('cos/credential/', file.cos_credential, name='cos_credential'),
 
-        path('setting/', manage.setting, name='setting'),
+        path('setting/', setting.setting, name='setting'),
+        path('setting/delete/', setting.delete, name='setting_delete'),
     ])),
 ]

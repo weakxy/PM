@@ -110,3 +110,47 @@ def credential(bucket, region):
     sts = Sts(config)
     result_dict = sts.get_credential()
     return result_dict
+
+
+def delete_bucket(bucket, region):
+    """ 删除桶
+    1. 删除文件
+    2. 删除碎片
+    3. 删除空桶
+    """
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+    config = CosConfig(Region=region, SecretId=settings.TENCENT_COS_ID, SecretKey=settings.TENCENT_COS_KEY, )
+    client = CosS3Client(config)
+
+    # 1
+    while True:
+        # 获取桶中文件(最大100个)
+        part_objects = client.list_objects(bucket)
+        contents = part_objects.get('Contents')
+        if not contents:
+            # 获取不到时
+            break
+        # 批量删除
+        objects = {
+            "Quiet": "true",
+            "Object": [{'Key': item["Key"]} for item in contents]
+        }
+        client.delete_object(bucket, objects)
+
+        if part_objects['IsTruncated'] == 'false':
+            break
+
+    # 2
+    while True:
+        part_uploads = client.list_multipart_uploads(bucket)
+        uploads = part_uploads.get('Upload')
+        if not uploads:
+            break
+        for item in uploads:
+            client.abort_multipart_upload(bucket, item['Key'], item['UploadId'])
+        if part_objects['IsTruncated'] == 'false':
+            break
+
+    # 3
+    client.delete_bucket(bucket)
