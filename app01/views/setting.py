@@ -20,7 +20,7 @@ def delete(request, project_id):
         return render(request, 'setting_delete.html', {'error': '只有项目创建者可以删除'})
     # 删除存储桶
     delete_bucket(request.tracer.project.bucket, request.tracer.project.region)
-    # 删除项目
+    # 删除项目1
     models.Project.objects.filter(id=request.tracer.project.id).delete()
 
     return redirect('project_list')
