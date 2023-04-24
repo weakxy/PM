@@ -41,6 +41,7 @@ def create_bucket(bucket, region="ap-nanjing"):
 
 
 def upload_file(bucket, region, file_object, key):
+    """ 上传图片 """
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
     config = CosConfig(Region=region, SecretId=settings.TENCENT_COS_ID, SecretKey=settings.TENCENT_COS_KEY, )

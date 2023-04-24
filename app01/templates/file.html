@@ -115,14 +115,20 @@
                                    data-name="{{ item.name }}"
                                    data-fid="{{ item.id }}"
                                    data-whatever="编辑文件夹">
-                                    <i class="fa fa-pencil-square-o" aria-hidden="true"></i>编辑
+                                    <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                                </a>
+
+                            {% else %}
+                                <a class="btn btn-default btn-xs"
+                                   href="{% url 'file_download' project_id=request.tracer.project.id file_id=item.id %}">
+                                    <i class="fa fa-cloud-download" aria-hidden="true"></i>
                                 </a>
                             {% endif %}
                             <a class="btn btn-danger btn-xs"
                                data-toggle="modal"
                                data-fid="{{ item.id }}"
                                data-target="#alertModal">
-                                <i class="fa fa-trash" aria-hidden="true"></i>删除
+                                <i class="fa fa-trash" aria-hidden="true"></i>
                             </a>
                         </td>
                     </tr>
@@ -322,6 +328,7 @@
                                 newTr.find('.username').text(res.data.username);
                                 newTr.find('.datetime').text(res.data.datetime);
                                 newTr.find('.delete').attr('data-fid', res.data.id);
+                                newTr.find('.download').attr('href', res.data.download_url);
 
                                 // 清楚进度条
                                 {#tr.remove();#}

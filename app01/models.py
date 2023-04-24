@@ -16,7 +16,7 @@ class User(models.Model):
 
 
 class PricePolicy(models.Model):
-    """ 价格 """
+    """ 价格策略 """
     category_choices = (
         (1, '免费版'),
         (2, '收费版'),

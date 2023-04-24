@@ -1,7 +1,9 @@
 import json
-from django.shortcuts import redirect, render
+import requests
+from django.shortcuts import redirect, render, HttpResponse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 from app01.forms.file import FolderModelForm, FileModelForm
 from app01 import models
 from app01.utils.cos import delete_file, delete_file_list, credential
@@ -155,8 +157,21 @@ def file_post(request, project_id):
             'file_size': instance.file_size,
             'username': instance.update_user.name,
             'datetime': instance.update_datetime.strftime("%Y年%m月%d日 %H:%M"),
+            'download_url': reverse('file_download', kwargs={'project_id': project_id, 'file_id': instance.id})
             # 'file_type': instance.get_file_type_display(),
         }
         return JsonResponse({'status': True, 'data': result})
 
     return JsonResponse({'status': False, 'data': "文件错误"})
+
+
+def file_download(request, project_id, file_id):
+    """ 下载文件 """
+    file_object = models.FileRepository.objects.filter(id=file_id, project_id=project_id).first()
+    res = requests.get(file_object.file_path)
+    data = res.content
+
+    response = HttpResponse(data, content_type="application/octet-stream")
+
+    response['Content-Disposition'] = "attachment; filename={}".format(file_object.name)
+    return response

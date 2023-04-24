@@ -30,6 +30,7 @@ urlpatterns = [
     path('pm/add/', home.home_add),
     path('logout/', home.home_logout),
 
+    # 类似于脚本对数据库进行处理删除
     path('orm/', home.orm),
 
     # 项目列表
@@ -53,6 +54,7 @@ urlpatterns = [
         path('file/', file.file, name='file'),
         path('file/delete/', file.file_delete, name='file_delete'),
         path('file/post/', file.file_post, name='file_post'),
+        path('file/download/<int:file_id>/', file.file_download, name='file_download'),
         path('cos/credential/', file.cos_credential, name='cos_credential'),
 
         path('setting/', manage.setting, name='setting'),
