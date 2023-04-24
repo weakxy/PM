@@ -28,8 +28,8 @@ class PricePolicy(models.Model):
 
     project_num = models.PositiveIntegerField(verbose_name="项目数")
     project_member = models.PositiveIntegerField(verbose_name="项目成员个数")
-    project_space = models.PositiveIntegerField(verbose_name="单项目空间")
-    project_size = models.PositiveIntegerField(verbose_name="单项目大小")
+    project_space = models.PositiveIntegerField(verbose_name="单项目空间", help_text='G')
+    project_size = models.PositiveIntegerField(verbose_name="单项目大小", help_text='M')
 
     create_datetime = models.DateTimeField(verbose_name="创建时间", auto_now_add=True)
 

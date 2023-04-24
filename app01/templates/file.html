@@ -1,4 +1,5 @@
 {% extends 'layout/manage.html' %}
+{% load static %}
 
 {% block css %}
     <style>
@@ -14,6 +15,31 @@
 
         .panel-default > .panel-heading span {
             padding: 0 5px;
+        }
+
+        .panel-default > .panel-heading .function .upload {
+            overflow: hidden;
+        }
+
+        .panel-default > .panel-heading .function .upload input {
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 76px;
+            left: -2px;
+            overflow: hidden;
+        }
+
+        .upload-progress {
+            position: fixed;
+            right: 2px;
+            bottom: 2px;
+            width: 400px
+        }
+
+        .upload-progress .progress-error {
+            color: red;
         }
     </style>
 {% endblock %}
@@ -35,7 +61,11 @@
                         </a>
                     {% endfor %}
                 </div>
-                <div>
+                <div class="function">
+                    <div class="btn btn-primary btn-xs upload" style="position: relative">
+                        <div><i class="fa fa-upload" aria-label="true"></i> 上传文件</div>
+                        <input type="file" multiple name="uploadFile" id="uploadFile">
+                    </div>
                     <a class="btn btn-success btn-xs" data-toggle="modal" data-target="#addModal"
                        data-whatever="新建文件夹">
                         <i class="fa fa-plus-circle" aria-hidden="true"></i> 新建文件夹
@@ -54,12 +84,13 @@
                     <th>操作</th>
                 </tr>
                 </thead>
-                <tbody>
+                <tbody id="rowList">
                 {% for item in file_object_list %}
                     <tr>
                         <th>
                             {% if item.file_type == 1 %}
                                 <i class="fa fa-file" aria-hidden="true"></i>
+                                {{ item.name }}
                             {% else %}
                                 <a href="{% url 'file' project_id=request.tracer.project.id %}?folder={{ item.id }}">
                                     <i class="fa fa-folder" aria-hidden="true"></i>
@@ -146,28 +177,176 @@
             </div>
         </div>
     </div>
+
+    <!-- 上传进度 -->
+    <div id="uploadProgress" class="upload-progress hide">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><i class="fa fa-cloud-upload" aria-hidden="true"></i> 上传进度</div>
+
+            <table class="table">
+                <tbody id="progressList">
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- 上传进度模板 -->
+    <div class="hide">
+        <table id="progressTemplate">
+            <tr>
+                <td>
+                    <div class="name">视频</div>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar"
+                             aria-valuenow="0"
+                             aria-valuemin="0"
+                             aria-valuemax="100" style="width: 0%">
+                            0%
+                        </div>
+                    </div>
+                    <div class="progress-error"></div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 文件模板 -->
+    <div class="hide">
+        <table id="rowTpl">
+            <tr>
+                <td>
+                    <i class="fa fa-file" aria-hidden="true"></i>
+                    <span class="name"></span>
+                </td>
+                <td class="file_size"></td>
+                <td class="username"></td>
+                <td class="datetime"></td>
+                <td>
+                    <a class="btn btn-default btn-xs download">
+                        <i class="fa fa-cloud-download" aria-hidden="true"></i>
+                    </a>
+                    <a class="btn btn-danger btn-xs delete" data-toggle="modal" data-target="#alertModal">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
 {% endblock %}
 
 {% block js %}
+    <script src="{% static 'js/cos-js-sdk-v5.min.js' %}"></script>
     <script>
         var FOLDER_URL = "{% url 'file' project_id=request.tracer.project.id %}";
         var FILE_DELETE_URL = "{% url 'file_delete' project_id=request.tracer.project.id %}";
+        var COS_CREDENTIAL = "{% url 'cos_credential' project_id=request.tracer.project.id %}";
+        var FILE_POST = "{% url 'file_post' project_id=request.tracer.project.id %}"
+        var CURRENT_FOLDER_ID = "{{ folder_object.id }}"
 
         $(function () {
             initAddModal();
             bindModalSubmit();
             bindDeleteSubmit();
+            bindUploadFile();
         });
 
+        function bindUploadFile() {
+            $("#uploadFile").change(function () {
+                $("#progressList").empty();
+                var checkFileList = [];
+                var fileList = $(this)[0].files;
+                $.each(fileList, function (index, fileObject) {
+                    checkFileList.push({'name': fileObject.name, 'size': fileObject.size});
+                });
+
+                // 发送django后台并校验
+                // 获取临时凭证
+                var cos_credential = new COS({
+                    getAuthorization: function (options, callback) {
+                        $.post(COS_CREDENTIAL, JSON.stringify(checkFileList), function (res) {
+                            if (res.status) {
+                                var credentials = res.data && res.data.credentials;
+                                if (!res.data || !credentials) return console.error('credentials invalid');
+                                callback({
+                                    TmpSecretId: credentials.tmpSecretId,
+                                    TmpSecretKey: credentials.tmpSecretKey,
+                                    SecurityToken: credentials.sessionToken,
+                                    // 建议返回服务器时间作为签名的开始时间，避免用户浏览器本地时间偏差过大导致签名错误
+                                    StartTime: res.data.startTime, // 时间戳，单位秒，如：1580000000
+                                    ExpiredTime: res.data.expiredTime, // 时间戳，单位秒，如：1580000000
+                                });
+
+                                $("#uploadProgress").removeClass('hide');
+                            } else {
+                                alert(res.error);
+                            }
+                        });
+                    }
+                });
+
+                $.each(fileList, function (index, fileObject) {
+                    var fileName = fileObject.name;
+                    var fileSize = fileObject.size;
+                    var key = (new Date()).getTime() + "_" + fileName;
+
+                    var tr = $('#progressTemplate').find('tr').clone();
+                    tr.find('.name').text(fileName);
+                    $("#progressList").append(tr);
+
+                    cos_credential.putObject({
+                        Bucket: '{{ request.tracer.project.bucket }}', /* 填入您自己的存储桶，必须字段 */
+                        Region: '{{ request.tracer.project.region }}',  /* 存储桶所在地域，例如ap-beijing，必须字段 */
+                        Key: key,  /* 存储在桶里的对象键（例如1.jpg，a/b/test.txt），必须字段 */
+                        Body: fileObject, /* 必须，上传文件对象，可以是input[type="file"]标签选择本地文件后得到的file对象 */
+                        onProgress: function (progressData) {           /* 非必须 */
+                            var percent = progressData.percent * 100 + '%';
+                            tr.find('.progress-bar').text(percent);
+                            tr.find('.progress-bar').css('width', percent);
+                        }
+                    }, function (err, data) {
+                        console.log(err || data);
+                        if (data && data.statusCode === 200) {
+                            // 上传成功
+                            $.post(FILE_POST, {
+                                name: fileName,
+                                key: key,
+                                file_size: fileSize,
+                                parent: CURRENT_FOLDER_ID,
+                                etag: data.ETag,
+                                file_path: data.Location,
+                            }, function (res) {
+                                // 在数据库中写入，将文件展示到页面
+                                var newTr = $("#rowTpl").find('tr').clone();
+                                newTr.find('.name').text(res.data.name);
+                                newTr.find('.file_size').text(res.data.file_size);
+                                newTr.find('.username').text(res.data.username);
+                                newTr.find('.datetime').text(res.data.datetime);
+                                newTr.find('.delete').attr('data-fid', res.data.id);
+
+                                // 清楚进度条
+                                {#tr.remove();#}
+
+                                $("#rowList").append(newTr);
+                            })
+                        } else {
+                            tr.find('.progress-error').text('上传失败');
+                        }
+                    });
+
+                });
+
+            });
+        }
+
         function bindDeleteSubmit() {
-            $("#btnDelete").click(function (){
+            $("#btnDelete").click(function () {
                 $.ajax({
-                    url:FILE_DELETE_URL,
+                    url: FILE_DELETE_URL,
                     type: "GET",
-                    data: {fid:$(this).attr('fid')},
-                    success:function (res){
-                        if(res.status){
-                            location.href=location.href;
+                    data: {fid: $(this).attr('fid')},
+                    success: function (res) {
+                        if (res.status) {
+                            location.href = location.href;
                         }
                     }
                 })
@@ -198,7 +377,7 @@
             $('#alertModal').on('show.bs.modal', function (event) {
                 var button = $(event.relatedTarget); // Button that triggered the modal
                 var fid = button.data('fid'); // Extract info from data-* attributes
-                $('#btnDelete').attr('fid',fid);
+                $('#btnDelete').attr('fid', fid);
             })
         }
 

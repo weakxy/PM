@@ -1,7 +1,10 @@
+import json
 from django.shortcuts import redirect, render
 from django.http import JsonResponse
-from app01.forms.file import FolderModelForm
+from django.views.decorators.csrf import csrf_exempt
+from app01.forms.file import FolderModelForm, FileModelForm
 from app01 import models
+from app01.utils.cos import delete_file, delete_file_list, credential
 
 
 def file(request, project_id):
@@ -32,6 +35,7 @@ def file(request, project_id):
             'form': form,
             'file_object_list': file_object_list,
             'breadcrumb_list': breadcrumb_list,
+            'folder_object': parent_object,
         }
         return render(request, 'file.html', context)
 
@@ -62,9 +66,97 @@ def file_delete(request, project_id):
     delete_object = models.FileRepository.objects.filter(id=fid, project=request.tracer.project).first()
     if delete_object.file_type == 1:
         # 删除文件
-        pass
-    else:
-        # 删除文件夹
-        pass
+        # 返还空间
+        request.tracer.project.use_space -= delete_object.file_size
+        request.tracer.project.save()
+        # 在COS中删除
+        delete_file(request.tracer.project.bucket, request.tracer.project.region, delete_object.key)
+        # 在数据库中删除
+        delete_object.delete()
+        return JsonResponse({'status': True})
+
+    # 删除文件夹
+    total_size = 0
+    key_list = []
+    folder_list = [delete_object, ]
+
+    for folder in folder_list:
+        child_list = models.FileRepository.objects.filter(project=request.tracer.project, parent=folder).order_by(
+            "-file_type")
+        for child in child_list:
+            if child.file_type == 2:
+                folder_list.append(child)
+            else:
+                total_size += child.file_size
+                key_list.append({"Key": child.key})
+
+    # 批量删除文件夹中的文件
+    if key_list:
+        delete_file_list(request.tracer.project.bucket, request.tracer.project.region, key_list)
+
+    if total_size:
+        request.tracer.project.use_space -= total_size
+        request.tracer.project.save()
     delete_object.delete()
-    return JsonResponse({'status': True})
+    return JsonResponse({"status": True})
+
+
+@csrf_exempt
+def cos_credential(request, project_id):
+    """ 获取cos临时凭证 """
+    total_size = 0
+    per_file_limit = request.tracer.price_policy.project_size * 1024 * 1024
+    file_list = json.loads(request.body.decode('utf-8'))
+    for item in file_list:
+        if item['size'] > per_file_limit:
+            msg = "文件{}大小超出限制(最大{}M)".format(item['name'], request.tracer.price_policy.project_size)
+            return JsonResponse({'status': False, 'error': msg})
+        total_size += item['size']
+
+    if request.tracer.project.use_space + total_size > request.tracer.price_policy.project_space * 1024 * 1024 * 1024:
+        return JsonResponse({'status': False, 'error': "容量超过限制,请升级套餐"})
+
+    data_dict = credential(request.tracer.project.bucket, request.tracer.project.region)
+    return JsonResponse({'status': True, 'data': data_dict})
+
+
+@csrf_exempt
+def file_post(request, project_id):
+    """ 将文件写入数据库
+    name: fileName,
+    key: key,
+    size: fileSize,
+    parent: CURRENT_FOLDER_ID,
+    etag: data.ETag,
+    file_path: data.Location,
+    """
+    form = FileModelForm(request, data=request.POST)
+    if form.is_valid():
+        # 通过ModelForm.save存储到数据库中返回的instance对象无法使用get_xx_display获取choice的中文
+        # form.instance.file_type = 1
+        # form.instance.update_user = request.tracer.user
+        # instance = form.save()
+        data_dict = form.cleaned_data
+        data_dict.pop('etag')
+        data_dict.update({
+            'project': request.tracer.project,
+            'file_type': 1,
+            'update_user': request.tracer.user
+        })
+        instance = models.FileRepository.objects.create(**data_dict)
+
+        # 项目已使用空间更新
+        request.tracer.project.use_space += data_dict['file_size']
+        request.tracer.project.save()
+
+        result = {
+            'id': instance.id,
+            'name': instance.name,
+            'file_size': instance.file_size,
+            'username': instance.update_user.name,
+            'datetime': instance.update_datetime.strftime("%Y年%m月%d日 %H:%M"),
+            # 'file_type': instance.get_file_type_display(),
+        }
+        return JsonResponse({'status': True, 'data': result})
+
+    return JsonResponse({'status': False, 'data': "文件错误"})
