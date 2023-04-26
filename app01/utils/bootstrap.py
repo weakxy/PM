@@ -17,7 +17,7 @@ class BootStrap:
                 continue
 
             if filed.widget.attrs:
-                filed.widget.attrs["class"] = "form-control"
+                filed.widget.attrs["class"] = "{} form-control".format(filed.widget.attrs.get('class', ""))
                 filed.widget.attrs["placeholder"] = filed.label
             else:
                 filed.widget.attrs = {
