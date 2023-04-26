@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, re_path, include
 from django.views.static import serve
 from django.conf import settings
-from app01.views import home, project, manage, wiki, file, setting, issues
+from app01.views import home, project, manage, wiki, file, setting, issues, dashboard
 
 urlpatterns = [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
@@ -40,7 +40,9 @@ urlpatterns = [
 
     # 项目管理
     path('manage/<int:project_id>/', include([
-        path('dashboard/', manage.dashboard, name='dashboard'),
+        path('dashboard/', dashboard.dashboard, name='dashboard'),
+        path('dashboard/issues/chart/', dashboard.issues_chart, name='issues_chart'),
+
         path('statistics/', manage.statistics, name='statistics'),
 
         path('wiki/', wiki.wiki, name='wiki'),
@@ -63,5 +65,7 @@ urlpatterns = [
         path('issues/detail/<int:issues_id>/', issues.issues_detail, name='issues_detail'),
         path('issues/record/<int:issues_id>/', issues.issues_record, name='issues_record'),
         path('issues/change/<int:issues_id>/', issues.issues_change, name='issues_change'),
+        path('issues/invite/url/', issues.invite_url, name='invite_url'),
     ])),
+    path('invite/join/<str:code>/', issues.invite_join, name='invite_join'),
 ]

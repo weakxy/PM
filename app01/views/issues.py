@@ -1,10 +1,13 @@
 import json
+import datetime
 from django.shortcuts import redirect, render, HttpResponse
 from django.http import JsonResponse, QueryDict
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.safestring import mark_safe
-from app01.forms.issues import IssuesModelForm, IssuesReplyModelForm
+from django.urls import reverse
+from app01.forms.issues import IssuesModelForm, IssuesReplyModelForm, InviteModelForm
 from app01.utils.pagination import Pagination
+from app01.utils.encrypt import uid
 from app01 import models
 
 
@@ -107,9 +110,12 @@ def issues(request, project_id):
         project_total_user = [(request.tracer.project.creator_id, request.tracer.project.creator.name)]
         join_user = models.ProjectUser.objects.filter(project_id=project_id).values_list('user_id', 'user__name')
         project_total_user.extend(join_user)
+
+        invite_form = InviteModelForm()
         context = {
             'form': form,
             'issues_object_list': issues_object_list,
+            'invite_form': invite_form,
             'page_html': page_object.page_html(),
             'filter_list': [
                 {'title': "问题类型", 'filter': CheckFilter('issues_type', project_issues_type, request)},
@@ -301,3 +307,71 @@ def issues_change(request, project_id, issues_id):
         return JsonResponse({'status': True, 'data': create_reply_record(change_record)})
 
     return JsonResponse({"status": False, "error": "非法用户"})
+
+
+def invite_url(request, project_id):
+    """ 生成邀请码 """
+    form = InviteModelForm(data=request.POST)
+    if form.is_valid():
+        if request.tracer.user != request.tracer.project.creator:
+            form.add_error('period', '无权生成邀请码')
+            return JsonResponse({'status': False, 'error': form.errors})
+
+        random_invite_code = uid(request.tracer.user.mobile)
+        form.instance.project = request.tracer.project
+        form.instance.code = random_invite_code
+        form.instance.creator = request.tracer.user
+        form.save()
+
+        url = "{scheme}://{host}{path}".format(
+            scheme=request.scheme,
+            host=request.get_host(),
+            path=reverse('invite_join', kwargs={'code': random_invite_code})
+        )
+        return JsonResponse({'status': True, 'data': url})
+    return JsonResponse({'status': False, 'error': form.errors})
+
+
+def invite_join(request, code):
+    """ 访问邀请码 """
+    current_datetime = datetime.datetime.now()
+    invite_object = models.ProjectInvite.objects.filter(code=code).first()
+    if not invite_object:
+        return render(request, 'invite_join.html', {'error': "邀请码不存在"})
+    if invite_object.project.creator == request.tracer.user:
+        return render(request, 'invite_join.html', {'error': "您已经是创建者"})
+
+    exits = models.ProjectUser.objects.filter(project=invite_object.project, user=request.tracer.user).exists()
+    if exits:
+        return render(request, 'invite_join.html', {'error': "已加入项目"})
+    # 判断参与成员是否超标
+    current_member = models.ProjectUser.objects.filter(project=invite_object.project).count() + 1
+
+    # 是否已过期
+    max_transaction = models.Transaction.objects.filter(user=invite_object.project.creator).order_by('-id').first()
+    if max_transaction.price_policy.category == 1:
+        max_member = max_transaction.price_policy.project_member
+    else:
+        if max_transaction.end_datetime < current_datetime:
+            free_object = models.PricePolicy.objects.filter(category=1).first()
+            max_member = free_object.project_member
+        else:
+            max_member = max_transaction.price_policy.project_member
+
+    if current_member >= max_member:
+        return render(request, 'invite_join.html', {'error': '项目成员超限，请升级套餐'})
+    # 邀请码是否过期
+    limit_datetime = invite_object.create_datetime + datetime.timedelta(minutes=invite_object.period)
+    if current_datetime > limit_datetime:
+        return render(request, 'invite_join.html', {'error': "邀请码已过期"})
+    # 数量限制
+    if invite_object:
+        if invite_object.use_count >= invite_object.count:
+            return render(request, 'invite_join.html', {'error': "邀请码数量已使用完"})
+        invite_object.use_count += 1
+        invite_object.save()
+
+    models.ProjectUser.objects.create(user=request.tracer.user, project=invite_object.project)
+    invite_object.project.join_count += 1
+    invite_object.save()
+    return render(request, 'invite_join.html', {'project': invite_object.project})
