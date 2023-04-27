@@ -120,7 +120,7 @@ def delete_bucket(bucket, region):
     """
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-    config = CosConfig(Region=region, SecretId=settings.TENCENT_COS_ID, SecretKey=settings.TENCENT_COS_KEY, )
+    config = CosConfig(Region=region, SecretId=settings.TENCENT_COS_ID, SecretKey=settings.TENCENT_COS_KEY)
     client = CosS3Client(config)
 
     # 1
@@ -136,7 +136,7 @@ def delete_bucket(bucket, region):
             "Quiet": "true",
             "Object": [{'Key': item["Key"]} for item in contents]
         }
-        client.delete_object(bucket, objects)
+        client.delete_objects(bucket, objects)
 
         if part_objects['IsTruncated'] == 'false':
             break

@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, re_path, include
 from django.views.static import serve
 from django.conf import settings
-from app01.views import home, project, manage, wiki, file, setting, issues, dashboard
+from app01.views import home, project, wiki, file, setting, issues, dashboard, statistics
 
 urlpatterns = [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
@@ -43,7 +43,9 @@ urlpatterns = [
         path('dashboard/', dashboard.dashboard, name='dashboard'),
         path('dashboard/issues/chart/', dashboard.issues_chart, name='issues_chart'),
 
-        path('statistics/', manage.statistics, name='statistics'),
+        path('statistics/', statistics.statistics, name='statistics'),
+        path('statistics/priority/', statistics.statistics_priority, name='statistics_priority'),
+        path('statistics/project/user/', statistics.statistics_project_user, name='statistics_project_user'),
 
         path('wiki/', wiki.wiki, name='wiki'),
         path('wiki/add/', wiki.wiki_add, name='wiki_add'),
