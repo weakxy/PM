@@ -1,0 +1,72 @@
+{% extends 'layout/../../../firstdjango/app01/templates/layout/basic.html' %}
+{% block title %}注册{% endblock %}
+
+{% block css %}
+
+    <style>
+        .lg {
+            border: none;
+            background: none;
+        }
+        .error_msg{
+            color: #b92c28;
+            position: absolute;
+            font-size: 13px;
+        }
+    </style>
+
+{% endblock %}
+
+
+{% block login %}
+    <li>
+        <a href="/pm/home1">返回</a>
+    </li>
+    <li>
+        {#        <button href="pm/add/" id="sign_up" class="lg">注册</button>#}
+        <a href="/pm/add/" id="sign_up">注册</a>
+    </li>
+{% endblock %}
+
+{% block content %}
+
+    {# 注册面板 #}
+    <div class="container">
+        <div class="panel panel-default" style="width: 50%; margin: auto">
+            <div class="panel-heading">
+                <h4>
+                    <i class="fa fa-registered" aria-hidden="true"></i>用户注册
+                </h4>
+            </div>
+            <form class="form-horizontal" style="padding: 40px" method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+
+                {% for filed in form %}
+                    <div class="form-group">
+
+                        <label>{{ filed.label }}</label>
+                        {{ filed }}
+                        <span class="error_msg">{{ filed.errors.0 }}</span>
+                    </div>
+                {% endfor %}
+
+                <div class="form-group">
+                    <div>
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox"> Remember me
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div>
+                        <button type="submit" class="btn btn-primary">注册</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+{% endblock %}

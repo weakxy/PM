@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -104,9 +105,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
-
+# 错误信息文字调整
 LANGUAGE_CODE = 'en-us'
 
+# 时区调整
 # TIME_ZONE = 'UTC'
 TIME_ZONE = 'Asia/Shanghai'
 
@@ -123,8 +125,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-import os
 
+# 图片存储在本地
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = "/media/"
 
@@ -135,6 +137,12 @@ SMS = 0
 # ################# 腾讯COS桶 ####################
 TENCENT_COS_ID = 'COS的secret_id'
 TENCENT_COS_KEY = 'COS的secret_key'
+
+# django缓存配置
+CACHES = {}
+
+SESSION_ENGINE = ''  # 引擎
+SESSION_CACHE_ALIAS = ''
 
 try:
     from .local_settings import *

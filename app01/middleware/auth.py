@@ -17,7 +17,7 @@ class AuthMiddleware(MiddlewareMixin):
     def process_request(self, request):
         request.tracer = Tracer()
 
-        if request.path_info in ["/pm/home1/", "/image/code/", "/pm/add/"]:
+        if request.path_info in ["/pm/home1/", "/image/code/", "/pm/add/", "/price/"]:
             return
 
         info_dict = request.session.get("info")

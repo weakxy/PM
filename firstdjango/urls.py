@@ -25,6 +25,11 @@ urlpatterns = [
     path('pm/home1/', home.home_show1),
     path('image/code/', home.image_code),
     path('pm/home2/', home.home_show2),
+    # 价格(支付)
+    path('price/', home.price, name='price'),
+    path('payment/<int:policy_id>/', home.payment, name='payment'),
+    path('pay/', home.pay, name="pay"),
+    path('pay/notify/', home.pay_notify, name="pay_notify"),
 
     # add为注册用户,logout为注销
     path('pm/add/', home.home_add),
